@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+
+permissions:
+  checks: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Mod
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: gradle
+
+      - name: Build and Test
+        uses: gradle/gradle-command-action@v2
+        env:
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PGP_SECRET_KEY }}
+          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.PGP_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PGP_KEY_PASSPHRASE }}
+        with:
+          arguments: |
+            checkLicenses
+            buildSrc:checkLicenses
+            build
+            test
+
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v4
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          report_paths: '**/build/test-results/test/TEST-*.xml'
+
+  publish: # only publish if we're on a tag
+    name: Publish Mod
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'JustPyrrha/WingIt'
+    permissions: # needed for the Create GitHub Release step
+      contents: write
+      pull-requests: write
+    needs:
+      - build
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: gradle
+
+      - name: Get Changelog
+        id: changelog
+        run: |
+          CHANGELOG=$(./gradlew getChangelog --no-header --no-summary --no-empty-sections -q --console=plain --unreleased)
+          
+          CHANGELOG="${CHANGELOG//$'\n'/'\\n'}"
+          CHANGELOG="${CHANGELOG//$'\r'/''}"
+          CHANGELOG=$(sed -E 's/Downloading https:\/\/services\.gradle\.org\/distributions\/gradle-[0-9\\.]*-bin\.zip\\\\n[\\.0-9%]*\\\\n//' <<< $CHANGELOG)
+          
+          echo "changelog=$CHANGELOG" >> "$GITHUB_OUTPUT"
+
+          echo "# Changelog" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$CHANGELOG" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create Modrinth Release
+        run: ./gradlew build signRemapJar modrinth modrinthSyncBody
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          ORG_GRADLE_PROJECT_signingKey: ${{ secrets.PGP_SECRET_KEY }}
+          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.PGP_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.PGP_KEY_PASSPHRASE }}
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CHANGELOG="${{ steps.changelog.outputs.changelog }}"
+          NL=$'\n'
+          CHANGELOG=${CHANGELOG//$'\\n'/"${NL}"}
+          echo "$CHANGELOG" >> "notes.txt"
+          gh release create ${{ github.ref_name }} ./build/libs/*.jar ./build/libs/*.asc --notes-file notes.txt
+
+      - name: Patch Changelog
+        run: ./gradlew patchChangelog
+
+      - name: Create Changelog Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          BRANCH="changelog-patch/$VERSION"
+
+          git config user.email "github-actions@github.com"
+          git config user.name "github-actions"
+
+          git checkout -b $BRANCH
+          git add CHANGELOG.md
+          git commit -m "docs(changelog): patch changelog for $VERSION"
+          git push -u origin $BRANCH
+
+          gh pr create \
+              --title "docs(changelog): patch changelog for $VERSION" \
+              --body-file notes.txt \
+              --base main \
+              --head "$BRANCH"

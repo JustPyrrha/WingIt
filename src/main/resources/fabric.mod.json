@@ -1,0 +1,50 @@
+{
+	"schemaVersion": 1,
+	"id": "wingit",
+	"version": "${version}",
+	"name": "WingIt",
+	"description": "Just Cause 3 inspired Elytra courses and leaderboards.",
+	"authors": [
+		"JustPyrrha"
+	],
+	"contact": {
+		"sources": "https://github.com/JustPyrrha/WingIt"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/wingit/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			{
+				"value": "gay.pyrrha.wingit.WingIt",
+				"adapter": "kotlin"
+			}
+		],
+		"client": [
+			{
+				"value": "gay.pyrrha.wingit.WingItClient",
+				"adapter": "kotlin"
+			}
+		],
+		"fabric-datagen": [
+			{
+				"value": "gay.pyrrha.wingit.WingItDataGenerator",
+				"adapter": "kotlin"
+			}
+		]
+	},
+	"mixins": [
+		"wingit.mixins.json",
+		{
+			"config": "wingit.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.15.2",
+		"minecraft": "~1.20.4",
+		"java": ">=17",
+		"fabric-api": "*",
+		"fabric-language-kotlin": ">=1.9.21"
+	}
+}
