@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package gay.pyrrha.wingit
+package gay.pyrrha.wingit.datagen.provider
 
-import net.fabricmc.fabric.api.datagen.v1.DataGeneratorEntrypoint
-import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator
+import gay.pyrrha.wingit.block.ModBlocks
+import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput
+import net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider
 
-object WingItDataGenerator : DataGeneratorEntrypoint {
-	override fun onInitializeDataGenerator(fabricDataGenerator: FabricDataGenerator) {
-
-	}
+class ModLanguageProvider(output: FabricDataOutput) : FabricLanguageProvider(output) {
+    override fun generateTranslations(builder: TranslationBuilder) {
+        builder.add(ModBlocks.COURSE_CORE, "Elytra Course Core")
+    }
 }

@@ -14,23 +14,18 @@
  * limitations under the License.
  */
 
-package gay.pyrrha.wingit
+package gay.pyrrha.wingit.datagen
 
-import gay.pyrrha.wingit.block.ModBlocks
-import net.fabricmc.api.ModInitializer
-import net.minecraft.util.Identifier
-import org.slf4j.LoggerFactory
+import gay.pyrrha.wingit.datagen.provider.ModLanguageProvider
+import gay.pyrrha.wingit.datagen.provider.ModModelProvider
+import net.fabricmc.fabric.api.datagen.v1.DataGeneratorEntrypoint
+import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator
 
-object WingIt : ModInitializer {
-	const val MOD_ID: String = "wingit"
+object WingItDataGenerator : DataGeneratorEntrypoint {
+	override fun onInitializeDataGenerator(fabricDataGenerator: FabricDataGenerator) {
+		val pack = fabricDataGenerator.createPack()
 
-    private val logger = LoggerFactory.getLogger("WingIt")
-
-	override fun onInitialize() {
-		logger.info("Trans Rights!")
-
-		ModBlocks.init()
+		pack.addProvider { output, _ -> ModModelProvider(output) }
+		pack.addProvider { output, _ -> ModLanguageProvider(output) }
 	}
-
-	internal fun id(path: String): Identifier = Identifier(MOD_ID, path)
 }

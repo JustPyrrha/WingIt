@@ -28,7 +28,7 @@
 		],
 		"fabric-datagen": [
 			{
-				"value": "gay.pyrrha.wingit.WingItDataGenerator",
+				"value": "gay.pyrrha.wingit.datagen.WingItDataGenerator",
 				"adapter": "kotlin"
 			}
 		]

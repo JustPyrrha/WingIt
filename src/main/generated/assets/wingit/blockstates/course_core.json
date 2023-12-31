@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wingit:block/course_core"
+    }
+  }
+}
